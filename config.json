@@ -1,0 +1,18 @@
+{
+  "sensitivity": "medium",
+  "interface": "auto",
+  "sound_alerts": true,
+  "desktop_notifications": true,
+  "geoip_enabled": false,
+  "max_alerts": 1000,
+  "max_history": 100,
+  "confidence_threshold": 0.75,
+  "model_path": "models/model.keras",
+  "scaler_path": "models/scaler.pkl",
+  "encoder_path": "models/label_encoder.pkl",
+  "abuseipdb_key": "5303920efcff8af5daa6e27b138b1dcc180fc11d496b60c218308e8ab805d49e086a9b2bbdf2e26f",
+  "threat_intel_enabled": false,
+  "alert_sound": "default",
+  "max_ui_alerts": 100,
+  "flow_timeout": 120
+}

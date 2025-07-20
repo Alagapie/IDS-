@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Error</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body { 
+            font-family: 'Roboto', sans-serif; 
+            background: linear-gradient(135deg, #1e293b, #0f172a); 
+            color: #e2e8f0; 
+            padding: 2rem;
+            min-height: 100vh;
+        }
+        .error-container {
+            max-width: 800px;
+            margin: 2rem auto;
+            background: #1e293b;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        h1 { 
+            color: #f72585;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        pre { 
+            background: rgba(0,0,0,0.3); 
+            padding: 1rem; 
+            border-radius: 8px;
+            overflow: auto;
+            max-height: 300px;
+        }
+        ul {
+            margin: 1rem 0;
+            padding-left: 1.5rem;
+        }
+        li {
+            margin-bottom: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <h1><i class="fas fa-exclamation-triangle"></i> System Error</h1>
+        <p>The application encountered an error while processing your request:</p>
+        <p><strong>{{ error_message }}</strong></p>
+        
+        <h2><i class="fas fa-bug"></i> Recent Errors</h2>
+        <ul>
+            {% for error in detection_stats.errors[-5:] %}
+            <li>[{{ error.timestamp }}] {{ error.message }}</li>
+            {% else %}
+            <li>No recent errors recorded</li>
+            {% endfor %}
+        </ul>
+        
+        <h2><i class="fas fa-info-circle"></i> System Status</h2>
+        <pre>{{ detection_stats|tojson(indent=2) }}</pre>
+        
+        <p>Please check the application logs for more details.</p>
+    </div>
+</body>
+</html>

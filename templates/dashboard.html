@@ -1,0 +1,645 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="dashboard">
+    <!-- System Status Row -->
+    <div class="status-row">
+        <div class="status-card">
+            <div class="status-icon running"></div>
+            <div class="status-content">
+                <h3>System Status</h3>
+                <p id="status-text">{{ detection_stats.get('status', 'Unknown') }}</p>
+            </div>
+        </div>
+        <div class="status-card">
+            <div class="status-icon uptime"></div>
+            <div class="status-content">
+                <h3>Uptime</h3>
+                <p id="uptime">{{ detection_stats.get('uptime', '0h 0m 0s') }}</p>
+            </div>
+        </div>
+        <div class="status-card">
+            <div class="status-icon interface"></div>
+            <div class="status-content">
+                <h3>Network Interface</h3>
+                <p id="interface-name">{{ detection_stats.get('active_interface', 'Unknown') }}</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Stats Row -->
+    <div class="stats-row">
+        <div class="stat-card total">
+            <h3>Total Packets</h3>
+            <p id="total-packets">{{ detection_stats.get('total_packets', 0) }}</p>
+            <i class="fas fa-network-wired"></i>
+        </div>
+        <div class="stat-card threats">
+            <h3>Threats Detected</h3>
+            <p id="threat-count">{{ detection_stats.get('malicious_packets', 0) }}</p>
+            <i class="fas fa-bug"></i>
+        </div>
+        <div class="stat-card protection">
+            <h3>Protection Level</h3>
+            <p id="protection-level">
+                {% if detection_stats.get('total_packets', 0) > 0 %}
+                    {{ (100 - (detection_stats.get('malicious_packets', 0) / detection_stats.get('total_packets', 1) * 100))|round|int }}%
+                {% else %}
+                    100%
+                {% endif %}
+            </p>
+            <i class="fas fa-shield-virus"></i>
+        </div>
+    </div>
+    
+    <!-- Main Content Row -->
+    <div class="main-content-row">
+        <div class="alerts-container">
+            <h2><i class="fas fa-bell"></i> Real-time Threat Alerts</h2>
+            <div class="filter-bar">
+                <select id="threat-filter" class="form-control">
+                    <option value="all">All Threats</option>
+                    <option value="critical">Critical</option>
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="info">Info</option>
+                </select>
+            </div>
+            <div class="alerts-list" id="alerts-list">
+                <div class="alert-item template">
+                    <div class="alert-severity"></div>
+                    <div class="alert-content">
+                        <div class="alert-header">
+                            <h4 class="alert-type"></h4>
+                            <div class="alert-confidence"></div>
+                        </div>
+                        <div class="alert-details">
+                            <div class="ip-address">
+                                <i class="fas fa-laptop"></i>
+                                <span class="src-ip"></span>
+                                <i class="fas fa-arrow-right"></i>
+                                <i class="fas fa-server"></i>
+                                <span class="dst-ip"></span>
+                            </div>
+                            <div class="alert-location">
+                                <i class="fas fa-map-marker-alt"></i>
+                                <span class="location-text"></span>
+                            </div>
+                            <div class="threat-intel" style="display: none">
+                                <i class="fas fa-database"></i>
+                                <span class="intel-text"></span>
+                            </div>
+                        </div>
+                        <small class="alert-time"></small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="map-container">
+            <h2><i class="fas fa-globe-americas"></i> Threat Origins</h2>
+            <div class="map-content">
+                <div id="world-map"></div>
+                <div class="map-overlay" id="no-locations">
+                    <i class="fas fa-globe"></i>
+                    <p>Attack locations will appear here</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Charts Row -->
+    <div class="charts-row">
+        <div class="chart-container">
+            <h3><i class="fas fa-chart-pie"></i> Attack Distribution</h3>
+            <canvas id="attack-chart"></canvas>
+        </div>
+        <div class="chart-container">
+            <h3><i class="fas fa-traffic-light"></i> Network Traffic</h3>
+            <img id="traffic-graph" src="{{ traffic_graph }}" alt="Network Traffic Graph">
+        </div>
+    </div>
+    
+    <!-- System Resources Row -->
+    <div class="resources-row">
+        <div class="resource-card">
+            <h3><i class="fas fa-microchip"></i> CPU Usage</h3>
+            <div class="resource-meter">
+                <div class="meter-bar" id="cpu-meter"></div>
+                <span id="cpu-value">0%</span>
+            </div>
+        </div>
+        <div class="resource-card">
+            <h3><i class="fas fa-memory"></i> Memory Usage</h3>
+            <div class="resource-meter">
+                <div class="meter-bar" id="memory-meter"></div>
+                <span id="memory-value">0%</span>
+            </div>
+        </div>
+        <div class="resource-card">
+            <h3><i class="fas fa-hard-drive"></i> Disk Usage</h3>
+            <div class="resource-meter">
+                <div class="meter-bar" id="disk-meter"></div>
+                <span id="disk-value">0%</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Actions Row -->
+    <div class="actions-row">
+        <button id="scan-network" class="btn-secondary">
+            <i class="fas fa-search"></i> Scan Network
+        </button>
+        <button id="generate-report" class="btn-primary">
+            <i class="fas fa-file-pdf"></i> Generate Report
+        </button>
+        <button id="export-logs" class="btn-info">
+            <i class="fas fa-download"></i> Export Logs
+        </button>
+    </div>
+    
+    <!-- Network Devices Row -->
+    <div class="devices-container">
+        <h2><i class="fas fa-network-wired"></i> Network Devices</h2>
+        <div class="devices-list" id="devices-list">
+            <div class="device-item template">
+                <div class="device-icon">
+                    <i class="fas fa-laptop"></i>
+                </div>
+                <div class="device-info">
+                    <h4 class="device-name">Device Name</h4>
+                    <div class="device-ip">192.168.1.1</div>
+                </div>
+                <div class="device-status">
+                    <span class="status-badge online">Online</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Initialize Socket.IO connection
+const socket = io();
+let attackMap;
+let markers = [];
+let attackChart;
+let config = {
+    sound_alerts: true,
+    desktop_notifications: true
+};
+
+// Initialize map
+function initMap() {
+    attackMap = L.map('world-map').setView([20, 0], 2);
+    
+    // Use light map tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(attackMap);
+    
+    // Add custom marker
+    const customIcon = L.divIcon({
+        className: 'custom-marker',
+        html: '<div class="marker-pulse"></div><div class="marker-pin"></div>',
+        iconSize: [30, 42],
+        iconAnchor: [15, 42]
+    });
+    
+    // Add sample marker with explanation
+    const sampleMarker = L.marker([0, 0], {icon: customIcon})
+        .addTo(attackMap)
+        .bindPopup("<b>Attack Location</b><br>Red markers show where attacks originate");
+    
+    document.getElementById('no-locations').style.display = 'flex';
+}
+
+// Initialize charts
+function initCharts() {
+    // Attack distribution chart
+    const attackCtx = document.getElementById('attack-chart').getContext('2d');
+    attackChart = new Chart(attackCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Normal', 'DoS', 'PortScan', 'BruteForce', 'Other'],
+            datasets: [{
+                data: [100, 0, 0, 0, 0],
+                backgroundColor: [
+                    '#4cc9f0',
+                    '#f72585',
+                    '#f8961e',
+                    '#7209b7',
+                    '#4895ef'
+                ],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'right',
+                    labels: {
+                        color: '#e2e8f0'
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Update stats display
+function updateStats(stats) {
+    document.getElementById('total-packets').textContent = stats.total_packets.toLocaleString();
+    document.getElementById('threat-count').textContent = stats.malicious_packets.toLocaleString();
+    document.getElementById('uptime').textContent = stats.uptime || '0h 0m 0s';
+    document.getElementById('status-text').textContent = stats.status || 'Unknown';
+    document.getElementById('interface-name').textContent = stats.active_interface || 'Unknown';
+    
+    // Properly calculate protection level
+    const protectionLevel = stats.total_packets > 0 ? 
+        Math.max(0, Math.round((1 - (stats.malicious_packets / stats.total_packets)) * 100)) : 100;
+    document.getElementById('protection-level').textContent = `${protectionLevel}%`;
+    
+    // Update resource meters
+    if (stats.system_stats) {
+        document.getElementById('cpu-value').textContent = `${stats.system_stats.cpu}%`;
+        document.getElementById('cpu-meter').style.width = `${stats.system_stats.cpu}%`;
+        
+        document.getElementById('memory-value').textContent = `${stats.system_stats.memory.percent}%`;
+        document.getElementById('memory-meter').style.width = `${stats.system_stats.memory.percent}%`;
+        
+        document.getElementById('disk-value').textContent = `${stats.system_stats.disk.percent}%`;
+        document.getElementById('disk-meter').style.width = `${stats.system_stats.disk.percent}%`;
+    }
+    
+    // Update map
+    if (stats.attack_locations && stats.attack_locations.length > 0) {
+        updateMap(stats.attack_locations);
+    }
+    
+    // Update attack chart
+    if (attackChart) {
+        const normal = stats.total_packets - stats.malicious_packets;
+        const dos = stats.attack_types['DoS'] || 0;
+        const portscan = stats.attack_types['PortScan'] || 0;
+        const bruteforce = stats.attack_types['BruteForce'] || 0;
+        const other = stats.malicious_packets - dos - portscan - bruteforce;
+        
+        attackChart.data.datasets[0].data = [normal, dos, portscan, bruteforce, other];
+        attackChart.update();
+    }
+    
+    // Update traffic graph
+    if (stats.traffic_graph) {
+        document.getElementById('traffic-graph').src = stats.traffic_graph;
+    }
+    
+    // Update network devices
+    if (stats.network_devices && stats.network_devices.length > 0) {
+        updateDevicesList(stats.network_devices);
+    }
+}
+
+// Update map with locations
+function updateMap(locations) {
+    if (!attackMap) initMap();
+    
+    // Clear existing markers
+    markers.forEach(marker => attackMap.removeLayer(marker));
+    markers = [];
+    
+    if (locations.length === 0) {
+        document.getElementById('no-locations').style.display = 'flex';
+        return;
+    }
+    
+    document.getElementById('no-locations').style.display = 'none';
+    
+    // Create custom icon
+    const customIcon = L.divIcon({
+        className: 'custom-marker',
+        html: '<div class="marker-pulse"></div><div class="marker-pin"></div>',
+        iconSize: [30, 42],
+        iconAnchor: [15, 42]
+    });
+    
+    // Add new markers
+    locations.forEach(loc => {
+        if (loc.latitude && loc.longitude) {
+            const marker = L.marker([loc.latitude, loc.longitude], {icon: customIcon})
+                .addTo(attackMap)
+                .bindPopup(`<b>${loc.city || 'Unknown'}, ${loc.country || 'Unknown'}</b><br>IP: ${loc.ip}`);
+            markers.push(marker);
+        }
+    });
+    
+    // Fit map to markers
+    if (markers.length > 0) {
+        const group = new L.featureGroup(markers);
+        attackMap.fitBounds(group.getBounds());
+    }
+}
+
+// Update network devices list
+function updateDevicesList(devices) {
+    const devicesList = document.getElementById('devices-list');
+    const template = devicesList.querySelector('.template');
+    
+    // Clear existing devices
+    devicesList.innerHTML = '';
+    devicesList.appendChild(template.cloneNode(true));
+    
+    // Add devices
+    devices.forEach(device => {
+        const deviceItem = template.cloneNode(true);
+        deviceItem.classList.remove('template');
+        deviceItem.querySelector('.device-name').textContent = device.hostname;
+        deviceItem.querySelector('.device-ip').textContent = device.ip;
+        
+        if (device.status === 'online') {
+            deviceItem.querySelector('.status-badge').classList.add('online');
+            deviceItem.querySelector('.status-badge').textContent = 'Online';
+        } else {
+            deviceItem.querySelector('.status-badge').classList.add('offline');
+            deviceItem.querySelector('.status-badge').textContent = 'Offline';
+        }
+        
+        devicesList.appendChild(deviceItem);
+    });
+}
+
+// Handle new alerts
+function handleNewAlert(data) {
+    console.log('New alert received:', data);
+    
+    const alertsList = document.getElementById('alerts-list');
+    const template = alertsList.querySelector('.template');
+    const newAlert = template.cloneNode(true);
+    
+    newAlert.classList.remove('template');
+    newAlert.querySelector('.alert-severity').className = `alert-severity ${data.severity}`;
+    newAlert.querySelector('.alert-type').textContent = data.type;
+    newAlert.querySelector('.alert-confidence').textContent = `${data.confidence}%`;
+    newAlert.querySelector('.src-ip').textContent = data.src_ip;
+    newAlert.querySelector('.dst-ip').textContent = data.dst_ip;
+    newAlert.querySelector('.alert-time').textContent = data.timestamp;
+    
+    // Add location if available
+    if (data.location && data.location.city) {
+        newAlert.querySelector('.location-text').textContent = 
+            `${data.location.city}, ${data.location.country}`;
+    } else {
+        newAlert.querySelector('.alert-location').style.display = 'none';
+    }
+    
+    // Add threat intelligence if available
+    if (data.threat_intel) {
+        newAlert.querySelector('.threat-intel').style.display = 'flex';
+        newAlert.querySelector('.intel-text').textContent = 
+            `${data.threat_intel.source}: ${data.threat_intel.abuse_score}% abuse score`;
+    }
+    
+    alertsList.insertBefore(newAlert, alertsList.firstChild);
+    
+    // Limit to 15 alerts
+    const maxAlerts = 15;
+    if (alertsList.children.length > maxAlerts + 1) {
+        alertsList.removeChild(alertsList.lastChild);
+    }
+    
+    // Play alert sound for critical/high threats if enabled
+    if ((data.severity === 'critical' || data.severity === 'high') && config.sound_alerts) {
+        console.log('Playing sound alert');
+        playAlertSound();
+    }
+    
+    // Show desktop notification if enabled and severity is critical or high
+    if (config.desktop_notifications && (data.severity === 'critical' || data.severity === 'high')) {
+        console.log('Showing desktop notification');
+        showDesktopNotification(data);
+    }
+}
+
+// Play alert sound
+function playAlertSound() {
+    try {
+        const audio = new Audio("/static/sounds/alert.mp3");
+        audio.volume = 0.4;
+        audio.play().catch(e => console.error("Audio play error:", e));
+    } catch (e) {
+        console.error("Sound alert error:", e);
+    }
+}
+
+// Show desktop notification
+function showDesktopNotification(alert) {
+    if (!("Notification" in window)) {
+        console.log("This browser does not support desktop notification");
+        return;
+    }
+    
+    const notificationOptions = {
+        body: `From: ${alert.src_ip}\nTo: ${alert.dst_ip}\nType: ${alert.type}\nConfidence: ${alert.confidence}%`,
+        icon: '/static/images/alert-icon.png'
+    };
+    
+    // Check if we have permission
+    if (Notification.permission === "granted") {
+        try {
+            new Notification(`Threat Detected: ${alert.type}`, notificationOptions);
+        } catch (e) {
+            console.error("Notification error:", e);
+        }
+    } else if (Notification.permission !== "denied") {
+        Notification.requestPermission().then(permission => {
+            if (permission === "granted") {
+                try {
+                    new Notification(`Threat Detected: ${alert.type}`, notificationOptions);
+                } catch (e) {
+                    console.error("Notification error:", e);
+                }
+            }
+        });
+    }
+}
+
+// Filter alerts by severity
+function filterAlerts(severity) {
+    const alerts = document.querySelectorAll('.alert-item:not(.template)');
+    
+    alerts.forEach(alert => {
+        if (severity === 'all' || alert.querySelector('.alert-severity').classList.contains(severity)) {
+            alert.style.display = 'flex';
+        } else {
+            alert.style.display = 'none';
+        }
+    });
+}
+
+// Show notification
+function showNotification(message, type) {
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'}"></i>
+        ${message}
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.classList.add('show');
+    }, 10);
+    
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => {
+            document.body.removeChild(notification);
+        }, 300);
+    }, 3000);
+}
+
+// Initialize everything when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Dashboard initialized');
+    initMap();
+    initCharts();
+    
+    // Request notification permission on page load
+    if ("Notification" in window) {
+        console.log('Requesting notification permission');
+        Notification.requestPermission().then(permission => {
+            console.log('Notification permission:', permission);
+        });
+    }
+    
+    // Setup Socket.IO listeners
+    socket.on('connect', () => {
+        console.log('Socket.IO connected');
+        // Request initial data
+        fetch('/stats')
+            .then(response => response.json())
+            .then(data => {
+                console.log('Initial stats received');
+                updateStats(data);
+            });
+    });
+    
+    socket.on('new_alert', handleNewAlert);
+    socket.on('initial_data', updateStats);
+    
+    // Control buttons
+    document.getElementById('pause-btn').addEventListener('click', function() {
+        fetch('/pause-monitoring', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    document.getElementById('pause-btn').style.display = 'none';
+                    document.getElementById('resume-btn').style.display = 'inline-block';
+                    document.getElementById('status-text').textContent = 'Paused';
+                    showNotification('Monitoring paused', 'success');
+                }
+            });
+    });
+    
+    document.getElementById('resume-btn').addEventListener('click', function() {
+        fetch('/resume-monitoring', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    document.getElementById('resume-btn').style.display = 'none';
+                    document.getElementById('pause-btn').style.display = 'inline-block';
+                    document.getElementById('status-text').textContent = 'Running';
+                    showNotification('Monitoring resumed', 'success');
+                }
+            });
+    });
+    
+    // Threat filter
+    document.getElementById('threat-filter').addEventListener('change', function() {
+        filterAlerts(this.value);
+    });
+    
+    // Scan network button
+    document.getElementById('scan-network').addEventListener('click', function() {
+        fetch('/scan-network', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    updateStats(detection_stats);
+                    showNotification('Network scan completed', 'success');
+                }
+            });
+    });
+    
+    // Generate report button
+    document.getElementById('generate-report').addEventListener('click', function() {
+        window.location.href = '/generate-report';
+    });
+    
+    // Export logs button
+    document.getElementById('export-logs').addEventListener('click', function() {
+        window.location.href = '/export-logs';
+    });
+    
+    // Settings save handler
+    document.getElementById('save-settings').addEventListener('click', function() {
+        const settings = {
+            sensitivity: document.getElementById('sensitivity').value,
+            interface: document.getElementById('interface').value,
+            sound_alerts: document.getElementById('sound_alerts').checked,
+            desktop_notifications: document.getElementById('desktop_notifications').checked,
+            geoip_enabled: document.getElementById('geoip_enabled').checked,
+            threat_intel_enabled: document.getElementById('threat_intel_enabled').checked,
+            abuseipdb_key: document.getElementById('abuseipdb_key').value
+        };
+        
+        fetch('/save-config', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(settings)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Update frontend config
+                config = {
+                    ...config,
+                    sound_alerts: settings.sound_alerts,
+                    desktop_notifications: settings.desktop_notifications
+                };
+                showNotification('Settings saved successfully', 'success');
+            } else {
+                showNotification('Failed to save settings: ' + data.message, 'error');
+            }
+        });
+    });
+    
+    // Periodically update stats
+    setInterval(() => {
+        fetch('/stats')
+            .then(response => response.json())
+            .then(data => {
+                updateStats(data);
+            });
+    }, 2000);
+    
+    // Get config for sound alerts
+    fetch('/get-config')
+        .then(response => response.json())
+        .then(data => {
+            console.log('Config received:', data);
+            config = {
+                ...config,
+                sound_alerts: data.sound_alerts,
+                desktop_notifications: data.desktop_notifications
+            };
+        })
+        .catch(error => console.error('Config fetch error:', error));
+});
+</script>
+{% endblock %}

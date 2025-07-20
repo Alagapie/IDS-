@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Intrusion Detection System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.css" />
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="logo">
+                <i class="fas fa-shield-alt"></i>
+                <h1>AI Intrusion Detection System</h1>
+            </div>
+            <div class="system-status">
+                <div class="status-indicators">
+                    <div class="status-item">
+                        <span class="status-indicator" id="status-indicator"></span>
+                        <span id="status-text">Running</span>
+                    </div>
+                    <div class="status-item">
+                        <i class="fas fa-network-wired"></i>
+                        <span id="interface-name">{{ detection_stats.get('active_interface', 'Unknown') }}</span>
+                    </div>
+                </div>
+                <div class="controls">
+                    <button id="pause-btn" class="btn-warning">
+                        <i class="fas fa-pause"></i> Pause
+                    </button>
+                    <button id="resume-btn" class="btn-success" style="display:none">
+                        <i class="fas fa-play"></i> Resume
+                    </button>
+                </div>
+            </div>
+            <nav class="nav">
+                <a href="/" class="nav-link active"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+                <a href="/history" class="nav-link"><i class="fas fa-history"></i> History</a>
+                <a href="/threat-intel" class="nav-link"><i class="fas fa-globe"></i> Threat Intel</a>
+                <a href="/settings" class="nav-link"><i class="fas fa-cog"></i> Settings</a>
+            </nav>
+        </header>
+        
+        <main class="main-content">
+            {% block content %}{% endblock %}
+        </main>
+        
+        <footer class="footer">
+            <p>AI-Powered IDS &copy; 2023 | Real-time Network Protection</p>
+            <div class="status">
+                <span class="status-indicator active"></span>
+                <span>System Active</span>
+            </div>
+        </footer>
+    </div>
+    
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>

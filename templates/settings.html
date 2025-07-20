@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="settings-container">
+    <h1><i class="fas fa-cog"></i> System Configuration</h1>
+    
+    <div class="settings-grid">
+        <!-- Detection Settings -->
+        <div class="settings-card">
+            <h2><i class="fas fa-shield-alt"></i> Detection Settings</h2>
+            
+            <div class="setting-group">
+                <div class="setting-item">
+                    <label for="sensitivity">Detection Sensitivity</label>
+                    <div class="setting-description">Adjust how aggressively the system detects threats</div>
+                    <select id="sensitivity" class="form-control">
+                        <option value="low" {% if config.sensitivity == 'low' %}selected{% endif %}>Low (Fewer alerts)</option>
+                        <option value="medium" {% if config.sensitivity == 'medium' %}selected{% endif %}>Medium (Balanced)</option>
+                        <option value="high" {% if config.sensitivity == 'high' %}selected{% endif %}>High (More alerts)</option>
+                    </select>
+                </div>
+                
+                <div class="setting-item">
+                    <label for="interface">Network Interface</label>
+                    <div class="setting-description">Select which network interface to monitor</div>
+                    <select id="interface" class="form-control">
+                        <option value="auto">Auto-detect</option>
+                        {% for iface in detection_stats.get('interfaces', []) %}
+                        <option value="{{ iface.name }}" {% if config.interface == iface.name %}selected{% endif %}>{{ iface.description }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="setting-item">
+                    <label for="flow_timeout">Flow Timeout (seconds)</label>
+                    <div class="setting-description">Time before inactive flows are removed</div>
+                    <input type="number" id="flow_timeout" class="form-control" value="{{ config.get('flow_timeout', 120) }}" min="30" max="600">
+                </div>
+            </div>
+        </div>
+        
+        <!-- Alert Preferences -->
+        <div class="settings-card">
+            <h2><i class="fas fa-bell"></i> Alert Preferences</h2>
+            
+            <div class="setting-group">
+                <div class="setting-item">
+                    <label class="switch">
+                        <input type="checkbox" id="sound_alerts" {% if config.sound_alerts %}checked{% endif %}>
+                        <span class="slider round"></span>
+                    </label>
+                    <div class="switch-label">
+                        <span>Sound Alerts</span>
+                        <div class="setting-description">Play alert sounds for critical threats</div>
+                    </div>
+                </div>
+                
+                <div class="setting-item">
+                    <label class="switch">
+                        <input type="checkbox" id="desktop_notifications" {% if config.desktop_notifications %}checked{% endif %}>
+                        <span class="slider round"></span>
+                    </label>
+                    <div class="switch-label">
+                        <span>Desktop Notifications</span>
+                        <div class="setting-description">Show desktop alerts for threats</div>
+                    </div>
+                </div>
+                
+                <div class="setting-item">
+                    <label class="switch">
+                        <input type="checkbox" id="geoip_enabled" {% if config.geoip_enabled %}checked{% endif %}>
+                        <span class="slider round"></span>
+                    </label>
+                    <div class="switch-label">
+                        <span>Geolocation</span>
+                        <div class="setting-description">Show threat locations on map</div>
+                    </div>
+                </div>
+                
+                <div class="setting-item">
+                    <label class="switch">
+                        <input type="checkbox" id="threat_intel_enabled" {% if config.threat_intel_enabled %}checked{% endif %}>
+                        <span class="slider round"></span>
+                    </label>
+                    <div class="switch-label">
+                        <span>Threat Intelligence</span>
+                        <div class="setting-description">Check threats against global databases</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Threat Intelligence -->
+        <div class="settings-card">
+            <h2><i class="fas fa-database"></i> Threat Intelligence</h2>
+            
+            <div class="setting-group">
+                <div class="setting-item">
+                    <label for="abuseipdb_key">AbuseIPDB API Key</label>
+                    <div class="setting-description">
+                        <a href="https://www.abuseipdb.com/" target="_blank">Get API key</a> to enhance threat intelligence
+                    </div>
+                    <input type="password" id="abuseipdb_key" class="form-control" value="{{ config.abuseipdb_key }}">
+                </div>
+                
+                <div class="setting-item">
+                    <label>Geolocation Database</label>
+                    <div class="setting-description">
+                        {% if geoip_status == "Available" %}
+                        <span class="status-success">✔️ Database available</span>
+                        {% else %}
+                        <span class="status-warning">⚠️ Database not found</span>
+                        <div class="download-instructions">
+                            Download the GeoLite2 database:
+                            <ol>
+                                <li>Create a free account at <a href="https://www.maxmind.com/" target="_blank">MaxMind</a></li>
+                                <li>Download the GeoLite2-City database (MMDB format)</li>
+                                <li>Place the file in the project root directory</li>
+                                <li><a href="/download-geoip">Download Instructions</a></li>
+                            </ol>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- System Information -->
+        <div class="settings-card">
+            <h2><i class="fas fa-info-circle"></i> System Information</h2>
+            
+            <div class="system-info-grid">
+                <div class="info-item">
+                    <div class="info-label">Model Accuracy</div>
+                    <div class="info-value">99.2%</div>
+                </div>
+                
+                <div class="info-item">
+                    <div class="info-label">Geolocation DB</div>
+                    <div class="info-value {{ 'status-success' if geoip_status == 'Available' else 'status-warning' }}">
+                        {{ geoip_status }}
+                    </div>
+                </div>
+                
+                <div class="info-item">
+                    <div class="info-label">Log Entries</div>
+                    <div class="info-value">{{ alerts|length if alerts else 0 }}</div>
+                </div>
+                
+                <div class="info-item">
+                    <div class="info-label">System Status</div>
+                    <div class="info-value status-{{ detection_stats.get('status', 'unknown') }}">
+                        {{ detection_stats.get('status', 'unknown')|capitalize }}
+                    </div>
+                </div>
+                
+                <div class="info-item">
+                    <div class="info-label">Uptime</div>
+                    <div class="info-value">{{ detection_stats.get('uptime', '0h 0m 0s') }}</div>
+                </div>
+                
+                <div class="info-item">
+                    <div class="info-label">Threats Detected</div>
+                    <div class="info-value">{{ detection_stats.get('malicious_packets', 0) }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="settings-actions">
+        <button id="save-settings" class="btn-primary">
+            <i class="fas fa-save"></i> Save Configuration
+        </button>
+        <button id="export-logs" class="btn-secondary">
+            <i class="fas fa-download"></i> Export Logs
+        </button>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Save Configuration
+    document.getElementById('save-settings').addEventListener('click', function() {
+        const settings = {
+            sensitivity: document.getElementById('sensitivity').value,
+            interface: document.getElementById('interface').value,
+            flow_timeout: document.getElementById('flow_timeout').value,
+            sound_alerts: document.getElementById('sound_alerts').checked,
+            desktop_notifications: document.getElementById('desktop_notifications').checked,
+            geoip_enabled: document.getElementById('geoip_enabled').checked,
+            threat_intel_enabled: document.getElementById('threat_intel_enabled').checked,
+            abuseipdb_key: document.getElementById('abuseipdb_key').value
+        };
+        
+        fetch('/save-config', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(settings)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert('Settings saved successfully!');
+            } else {
+                alert('Failed to save settings: ' + (data.message || 'Unknown error'));
+            }
+        });
+    });
+    
+    // Export Logs
+    document.getElementById('export-logs').addEventListener('click', function() {
+        window.location.href = '/export-logs';
+    });
+});
+</script>
+{% endblock %}

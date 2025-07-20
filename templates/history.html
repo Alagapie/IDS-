@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="history-container">
+    <h1><i class="fas fa-history"></i> Attack History</h1>
+    
+    <div class="history-controls">
+        <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" id="search-input" placeholder="Search alerts..." class="form-control">
+        </div>
+        <div class="history-actions">
+            <button id="export-logs" class="btn-secondary">
+                <i class="fas fa-download"></i> Export Logs
+            </button>
+            <button id="clear-logs" class="btn-danger">
+                <i class="fas fa-trash"></i> Clear Logs
+            </button>
+        </div>
+    </div>
+    
+    <div class="log-table">
+        <div class="table-header">
+            <div>Time</div>
+            <div>Attack Type</div>
+            <div>Source</div>
+            <div>Destination</div>
+            <div>Confidence</div>
+            <div>Severity</div>
+        </div>
+        <div class="table-body" id="log-entries">
+            {% for alert in alerts %}
+            {% set parts = alert.strip().split('|') %}
+            {% if parts|length >= 6 %}
+            <div class="log-entry">
+                <div>{{ parts[0] }}</div>
+                <div>{{ parts[1] }}</div>
+                <div>{{ parts[2] }}</div>
+                <div>{{ parts[3] }}</div>
+                <div>{{ parts[4] }}%</div>
+                <div class="severity-{{ parts[5] }}">{{ parts[5]|capitalize }}</div>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Search functionality
+    const searchInput = document.getElementById('search-input');
+    const logEntries = document.querySelectorAll('.log-entry');
+    
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        logEntries.forEach(entry => {
+            const text = entry.textContent.toLowerCase();
+            if (text.includes(searchTerm)) {
+                entry.style.display = 'grid';
+            } else {
+                entry.style.display = 'none';
+            }
+        });
+    });
+    
+    // Export Logs
+    document.getElementById('export-logs').addEventListener('click', function() {
+        window.location.href = '/export-logs';
+    });
+    
+    // Clear Logs
+    document.getElementById('clear-logs').addEventListener('click', function() {
+        if (confirm('Are you sure you want to clear all logs? This action cannot be undone.')) {
+            fetch('/clear-logs', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        location.reload();
+                    } else {
+                        alert('Failed to clear logs: ' + (data.message || 'Unknown error'));
+                    }
+                });
+        }
+    });
+});
+</script>
+{% endblock %}
